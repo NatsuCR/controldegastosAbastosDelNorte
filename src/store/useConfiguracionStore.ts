@@ -10,7 +10,7 @@ import {
   obtenerConfiguracionNegocio,
 } from '../database/repositories/configuracionRepository';
 import { actualizarProducto, listarProductosTodos } from '../database/repositories/productosAdminRepository';
-import { crearProductoRapido } from '../database/repositories/productosCrearRepository';
+import { guardarProducto } from '../database/repositories/productosCrearRepository';
 import {
   actualizarProveedor,
   crearProveedorRapido,
@@ -68,7 +68,7 @@ export const useConfiguracionStore = create<ConfiguracionState>((set, get) => ({
     return id;
   },
   renombrarCategoria: async (id, nombre) => ejecutar(set, get, 'Categoria actualizada', () => renombrarCategoria(id, nombre)),
-  crearProducto: async (input) => ejecutar(set, get, 'Producto creado', () => crearProductoRapido(input)),
+  crearProducto: async (input) => ejecutar(set, get, 'Producto creado', () => guardarProducto(input)),
   actualizarProducto: async (input) => ejecutar(set, get, 'Producto actualizado', () => actualizarProducto(input)),
   crearProveedor: async (nombre) => ejecutarConResultado(set, get, 'Proveedor creado', () => crearProveedorRapido(nombre)),
   actualizarProveedor: async (id, nombre, telefono) => ejecutar(

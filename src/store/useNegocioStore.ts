@@ -7,7 +7,7 @@ import {
 import { registrarCompra as guardarCompra } from '../database/repositories/comprasRepository';
 import { obtenerConfiguracionNegocio } from '../database/repositories/configuracionRepository';
 import { listarInventarioActual, registrarAjusteInventario as guardarAjusteInventario } from '../database/repositories/inventarioRepository';
-import { crearProductoRapido } from '../database/repositories/productosCrearRepository';
+import { guardarProducto } from '../database/repositories/productosCrearRepository';
 import { listarProductosActivos } from '../database/repositories/productosRepository';
 import {
   crearProveedorRapido,
@@ -61,7 +61,7 @@ export const useNegocioStore = create<NegocioState>((set, get) => ({
     set({ cargando: true, mensaje: null });
 
     try {
-      const productoId = await crearProductoRapido(input);
+      const productoId = await guardarProducto(input);
       await get().cargarDatos();
       set({ mensaje: { tipo: 'exito', texto: 'Producto creado' } });
       return productoId;

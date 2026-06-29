@@ -4,37 +4,41 @@ import type { ResultadoCalculoFiscal } from '../../types/fiscales';
 import { calcularVenta } from '../../services';
 import { esPagoSinpe, esTelefonoClienteValido, normalizarTelefonoCliente } from '../../utils/telefono';
 import { validarPositivo } from '../../utils/validaciones';
-import { obtenerBaseDatos } from '../db';
+import { apiClient } from '../../services/apiClient';
 import { crearErrorRepositorio } from './errores';
 import { obtenerConfiguracionNegocio } from './configuracionRepository';
-import { obtenerStockProducto } from './inventarioRepository';
-import { obtenerProductoPorId } from './productosRepository';
+import { obtenerProductoPorId } from './productosRepository'; // We need this function to get product data
 
-interface VentaPreparada {
-  producto: Producto;
-  cantidad: number;
-  cantidadInventario: number;
-  calculo: ResultadoCalculoFiscal;
-}
-
+// We assume we fetch products through API
 export async function registrarVentaCarrito(input: RegistrarVentaCarritoInput): Promise<number[]> {
   try {
     const clienteTelefono = obtenerTelefonoCliente(input);
     const lineas = consolidarLineas(input.lineas);
     const config = await obtenerConfiguracionNegocio();
-    const ventas = await prepararVentas(lineas, config.precioVentaIncluyeIva);
-    const db = await obtenerBaseDatos();
+    
+    // In order to calculate, we need product details. Let's fetch all products and find them.
+    const allProducts = await apiClient.get('/productos');
+    
+    const ventas = prepararVentas(lineas, allProducts, config.precioVentaIncluyeIva);
     const ids: number[] = [];
 
-    await db.withExclusiveTransactionAsync(async (txn) => {
-      const fecha = new Date().toISOString();
+    for (const venta of ventas) {
+      const payload = {
+        productoId: venta.producto.id,
+        cantidad: venta.cantidad,
+        precioUnitario: venta.producto.precioVentaActual,
+        tasaIva: venta.producto.tasaIva,
+        subtotal: venta.calculo.subtotal,
+        ivaMonto: venta.calculo.ivaMonto,
+        total: venta.calculo.total,
+        metodoPago: input.metodoPago,
+        clienteTelefono,
+        nota: input.nota?.trim() || null
+      };
 
-      for (const venta of ventas) {
-        const resultado = await insertarVenta(txn, venta, input, clienteTelefono, fecha);
-        ids.push(resultado.lastInsertRowId);
-        await insertarSalidaInventario(txn, venta, resultado.lastInsertRowId, fecha);
-      }
-    });
+      const result = await apiClient.post('/ventas', payload);
+      ids.push(result.id);
+    }
 
     return ids;
   } catch (error) {
@@ -55,16 +59,17 @@ function consolidarLineas(lineas: RegistrarVentaLineaInput[]) {
   return [...totales].map(([productoId, cantidad]) => ({ productoId, cantidad }));
 }
 
-async function prepararVentas(lineas: RegistrarVentaLineaInput[], precioIncluyeIva: boolean) {
-  const ventas: VentaPreparada[] = [];
+function prepararVentas(lineas: RegistrarVentaLineaInput[], allProducts: any[], precioIncluyeIva: boolean) {
+  const ventas: any[] = [];
 
   for (const linea of lineas) {
-    const producto = await obtenerProductoPorId(linea.productoId);
-    const cantidadInventario = linea.cantidad * producto.cantidadPorPresentacion;
-    const stock = await obtenerStockProducto(linea.productoId);
+    const producto = allProducts.find(p => p.id === linea.productoId);
+    if (!producto) throw new Error(`Producto no encontrado`);
 
-    if (stock < cantidadInventario) {
-      throw new Error(`stock insuficiente para ${producto.nombre}: disponible ${stock} ${producto.unidadMedida}`);
+    const cantidadInventario = linea.cantidad * producto.cantidadPorPresentacion;
+    
+    if (producto.cantidadStock < cantidadInventario) {
+      throw new Error(`stock insuficiente para ${producto.nombre}: disponible ${producto.cantidadStock} ${producto.unidadMedida}`);
     }
 
     ventas.push({
@@ -79,41 +84,9 @@ async function prepararVentas(lineas: RegistrarVentaLineaInput[], precioIncluyeI
 }
 
 function obtenerTelefonoCliente(input: RegistrarVentaCarritoInput): string | null {
-  if (!esPagoSinpe(input.metodoPago)) {
-    return null;
-  }
-
+  if (!esPagoSinpe(input.metodoPago)) return null;
   if (!esTelefonoClienteValido(input.clienteTelefono ?? '')) {
     throw new Error('el celular del cliente es obligatorio para ventas por SINPE Movil');
   }
-
   return normalizarTelefonoCliente(input.clienteTelefono ?? '');
-}
-
-function insertarVenta(txn: Awaited<ReturnType<typeof obtenerBaseDatos>>, venta: VentaPreparada,
-  input: RegistrarVentaCarritoInput, clienteTelefono: string | null, fecha: string) {
-  const p = venta.producto;
-  return txn.runAsync(
-    `INSERT INTO ventas (
-      fecha, producto_id, cantidad, precio_unitario, tasa_iva, subtotal,
-      iva_monto, total, metodo_pago, cliente_telefono, nota
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    fecha, p.id, venta.cantidad, p.precioVentaActual, p.tasaIva,
-    venta.calculo.subtotal, venta.calculo.ivaMonto, venta.calculo.total,
-    input.metodoPago, clienteTelefono, input.nota?.trim() || null,
-  );
-}
-
-function insertarSalidaInventario(
-  txn: Awaited<ReturnType<typeof obtenerBaseDatos>>,
-  venta: VentaPreparada,
-  ventaId: number,
-  fecha: string,
-) {
-  return txn.runAsync(
-    `INSERT INTO inventario (
-      fecha, tipo_movimiento, producto_id, cantidad, compra_id, venta_id, nota
-    ) VALUES (?, 'salida', ?, ?, NULL, ?, ?)`,
-    fecha, venta.producto.id, venta.cantidadInventario, ventaId, 'Venta en carrito',
-  );
 }

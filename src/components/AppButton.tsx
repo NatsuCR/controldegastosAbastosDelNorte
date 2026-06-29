@@ -10,9 +10,10 @@ interface Props {
   loading?: boolean;
   icon?: LucideIcon;
   variant?: 'primary' | 'secondary' | 'danger';
+  style?: any;
 }
 
-export function AppButton({ label, onPress, disabled, loading, icon: Icon, variant = 'primary' }: Props) {
+export function AppButton({ label, onPress, disabled, loading, icon: Icon, variant = 'primary', style }: Props) {
   const esSecundario = variant === 'secondary';
   const esDanger = variant === 'danger';
 
@@ -21,7 +22,7 @@ export function AppButton({ label, onPress, disabled, loading, icon: Icon, varia
       accessibilityRole="button"
       disabled={disabled || loading}
       onPress={onPress}
-      style={[styles.base, esSecundario && styles.secundario, esDanger && styles.danger, (disabled || loading) && styles.disabled]}
+      style={[styles.base, esSecundario && styles.secundario, esDanger && styles.danger, (disabled || loading) && styles.disabled, style]}
     >
       {loading ? <ActivityIndicator color={esSecundario ? colores.primario : '#FFFFFF'} /> : null}
       {!loading && Icon ? <Icon color={esSecundario ? colores.primario : '#FFFFFF'} size={18} /> : null}

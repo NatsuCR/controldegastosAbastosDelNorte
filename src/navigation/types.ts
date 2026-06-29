@@ -1,4 +1,5 @@
 export type RootStackParamList = {
+  Login: undefined;
   Principal: undefined;
 };
 
@@ -10,4 +11,5 @@ export type TabParamList = {
   Reportes: undefined;
   Inventario: undefined;
   Configuracion: undefined;
+  Usuarios: undefined;
 };

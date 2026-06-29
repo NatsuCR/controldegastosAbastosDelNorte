@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { BarChart3, Home, Package, ReceiptText, Settings, ShoppingCart, Truck, TrendingDown } from 'lucide-react-native';
+import { BarChart3, Home, Package, ReceiptText, Settings, ShoppingCart, Truck, TrendingDown, Users } from 'lucide-react-native';
 
 import { colores } from '../constants/tema';
 import { CompraScreen } from '../screens/CompraScreen';
@@ -11,12 +11,17 @@ import { GastosScreen } from '../screens/GastosScreen';
 import { InventarioScreen } from '../screens/InventarioScreen';
 import { ReportesScreen } from '../screens/ReportesScreen';
 import { VentaScreen } from '../screens/VentaScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { UsuariosScreen } from '../screens/UsuariosScreen';
 import type { RootStackParamList, TabParamList } from './types';
+import { useAuthStore } from '../store/useAuthStore';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 function MainTabs() {
+  const isAdmin = useAuthStore(s => s.isAdmin());
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -27,11 +32,13 @@ function MainTabs() {
         tabBarStyle: { minHeight: 62, paddingTop: 6 },
       }}
     >
-      <Tab.Screen
-        name="Inicio"
-        component={DashboardScreen}
-        options={{ tabBarIcon: ({ color }) => <Home color={color} size={22} /> }}
-      />
+      {isAdmin && (
+        <Tab.Screen
+          name="Inicio"
+          component={DashboardScreen}
+          options={{ tabBarIcon: ({ color }) => <Home color={color} size={22} /> }}
+        />
+      )}
       <Tab.Screen
         name="Venta"
         component={VentaScreen}
@@ -47,29 +54,46 @@ function MainTabs() {
         tabBarIcon: ({ color, size }) => <TrendingDown color={color} size={size} />,
       }} />
       <Tab.Screen
-        name="Reportes"
-        component={ReportesScreen}
-        options={{ tabBarIcon: ({ color }) => <BarChart3 color={color} size={22} /> }}
-      />
-      <Tab.Screen
         name="Inventario"
         component={InventarioScreen}
         options={{ tabBarIcon: ({ color }) => <Package color={color} size={22} /> }}
       />
-      <Tab.Screen
-        name="Configuracion"
-        component={ConfiguracionScreen}
-        options={{ tabBarIcon: ({ color }) => <Settings color={color} size={22} /> }}
-      />
+      {isAdmin && (
+        <Tab.Screen
+          name="Reportes"
+          component={ReportesScreen}
+          options={{ tabBarIcon: ({ color }) => <BarChart3 color={color} size={22} /> }}
+        />
+      )}
+      {isAdmin && (
+        <Tab.Screen
+          name="Usuarios"
+          component={UsuariosScreen}
+          options={{ tabBarIcon: ({ color }) => <Users color={color} size={22} /> }}
+        />
+      )}
+      {isAdmin && (
+        <Tab.Screen
+          name="Configuracion"
+          component={ConfiguracionScreen}
+          options={{ tabBarIcon: ({ color }) => <Settings color={color} size={22} /> }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
 
 export function AppNavigator() {
+  const user = useAuthStore(s => s.user);
+
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Principal" component={MainTabs} />
+        {!user ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
+          <Stack.Screen name="Principal" component={MainTabs} />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

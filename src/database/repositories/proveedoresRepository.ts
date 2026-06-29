@@ -1,30 +1,18 @@
 import type { Proveedor } from '../models';
-import { obtenerBaseDatos } from '../db';
+import { apiClient } from '../../services/apiClient';
 import { crearErrorRepositorio } from './errores';
 
-interface ProveedorRow {
-  id: number;
-  nombre: string;
-  telefono: string | null;
-  nota: string | null;
-}
-
-function mapProveedor(row: ProveedorRow): Proveedor {
-  return {
-    id: row.id,
-    nombre: row.nombre,
-    telefono: row.telefono,
-    nota: row.nota,
-  };
+export async function listarProveedoresActivos(): Promise<Proveedor[]> {
+  try {
+    return await apiClient.get('/proveedores');
+  } catch (error) {
+    throw crearErrorRepositorio('No se pudieron cargar los proveedores', error);
+  }
 }
 
 export async function listarProveedores(): Promise<Proveedor[]> {
   try {
-    const db = await obtenerBaseDatos();
-    const rows = await db.getAllAsync<ProveedorRow>(
-      `SELECT * FROM proveedores ORDER BY nombre ASC`,
-    );
-    return rows.map(mapProveedor);
+    return await apiClient.get('/proveedores');
   } catch (error) {
     throw crearErrorRepositorio('No se pudieron cargar los proveedores', error);
   }
@@ -32,59 +20,54 @@ export async function listarProveedores(): Promise<Proveedor[]> {
 
 export async function crearProveedorRapido(nombre: string): Promise<number> {
   try {
-    const nombreLimpio = nombre.trim();
-
-    if (!nombreLimpio) {
-      throw new Error('el nombre del proveedor es obligatorio');
-    }
-
-    const db = await obtenerBaseDatos();
-    const resultado = await db.runAsync(
-      `INSERT INTO proveedores (nombre, telefono, nota) VALUES (?, NULL, NULL)`,
-      nombreLimpio,
-    );
-    return resultado.lastInsertRowId;
+    const result = await apiClient.post('/proveedores', { nombre, diasVisita: [] });
+    return result.id;
   } catch (error) {
-    throw crearErrorRepositorio('No se pudo crear el proveedor', error);
+    throw crearErrorRepositorio('No se pudo guardar el proveedor', error);
   }
 }
 
-export async function actualizarProveedor(
-  proveedorId: number,
-  nombre: string,
-  telefono?: string,
-): Promise<void> {
+export async function actualizarProveedor(id: number, nombre: string, telefono?: string): Promise<void> {
   try {
-    const nombreLimpio = nombre.trim();
-
-    if (!nombreLimpio) {
-      throw new Error('el nombre del proveedor es obligatorio');
-    }
-
-    const db = await obtenerBaseDatos();
-    await db.runAsync(
-      `UPDATE proveedores SET nombre = ?, telefono = ? WHERE id = ?`,
-      nombreLimpio,
-      telefono?.trim() || null,
-      proveedorId,
-    );
+    await apiClient.put(`/proveedores/${id}`, { nombre, telefono, diasVisita: [] });
   } catch (error) {
-    throw crearErrorRepositorio('No se pudo actualizar el proveedor', error);
+    throw crearErrorRepositorio('No se pudo guardar el proveedor', error);
   }
 }
 
-export async function eliminarProveedor(proveedorId: number): Promise<void> {
+export async function guardarProveedor(
+  proveedor: Omit<Proveedor, 'id' | 'activo'> & { id?: number },
+): Promise<number> {
   try {
-    const db = await obtenerBaseDatos();
-    await db.withExclusiveTransactionAsync(async (txn) => {
-      // Al eliminar un proveedor, sus compras y el inventario asociado a esas compras deben eliminarse
-      await txn.runAsync(
-        `DELETE FROM inventario WHERE compra_id IN (SELECT id FROM compras WHERE proveedor_id = ?)`,
-        proveedorId
-      );
-      await txn.runAsync(`DELETE FROM compras WHERE proveedor_id = ?`, proveedorId);
-      await txn.runAsync(`DELETE FROM proveedores WHERE id = ?`, proveedorId);
-    });
+    const { nombre, telefono } = proveedor;
+    const diasVisita = (proveedor as any).diasVisita || [];
+    if (!nombre.trim()) {
+      throw new Error('El nombre del proveedor es obligatorio');
+    }
+
+    if (proveedor.id) {
+      await apiClient.put(`/proveedores/${proveedor.id}`, { nombre, telefono, diasVisita });
+      return proveedor.id;
+    } else {
+      const result = await apiClient.post('/proveedores', { nombre, telefono, diasVisita });
+      return result.id;
+    }
+  } catch (error) {
+    throw crearErrorRepositorio('No se pudo guardar el proveedor', error);
+  }
+}
+
+export async function eliminarProveedor(id: number): Promise<void> {
+  try {
+    await apiClient.delete(`/proveedores/${id}`);
+  } catch (error) {
+    throw crearErrorRepositorio('No se pudo eliminar el proveedor', error);
+  }
+}
+
+export async function inhabilitarProveedor(id: number): Promise<void> {
+  try {
+    await apiClient.delete(`/proveedores/${id}`);
   } catch (error) {
     throw crearErrorRepositorio('No se pudo eliminar el proveedor', error);
   }
