@@ -1,4 +1,4 @@
-const API_URL = 'https://pink-ladybug-5.loca.lt/api';
+const API_URL = 'https://dull-seals-hang.loca.lt/api';
 
 type ApiRequest = Omit<RequestInit, 'headers'> & {
   headers?: Record<string, string>;
