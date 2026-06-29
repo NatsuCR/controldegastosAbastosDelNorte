@@ -6,75 +6,83 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   const connection = await db.getConnection();
   try {
-    const [[{ total_ventas }]] = await connection.query(`
-      SELECT COALESCE(SUM(total), 0) as total_ventas
+    // 1. Resumen Fiscal (Totales de ventas, compras, gastos)
+    const [[ventas]] = await connection.query(`
+      SELECT 
+        COALESCE(SUM(total), 0) as ingresoBruto,
+        COALESCE(SUM(iva_monto), 0) as ivaCobrado,
+        COALESCE(SUM(CASE WHEN tasa_iva = 0.13 THEN iva_monto ELSE 0 END), 0) as ivaCobrado13,
+        COALESCE(SUM(CASE WHEN tasa_iva = 0.01 THEN iva_monto ELSE 0 END), 0) as ivaCobrado1
       FROM ventas
-      WHERE date(fecha) = curdate()
     `);
 
-    const [[{ compras_total }]] = await connection.query(`
-      SELECT COALESCE(SUM(total), 0) as compras_total
+    const [[compras]] = await connection.query(`
+      SELECT 
+        COALESCE(SUM(subtotal), 0) as totalComprasSinIva,
+        COALESCE(SUM(iva_monto), 0) as ivaPagadoProveedores,
+        COALESCE(SUM(CASE WHEN tasa_iva = 0.13 THEN iva_monto ELSE 0 END), 0) as ivaProveedores13,
+        COALESCE(SUM(CASE WHEN tasa_iva = 0.01 THEN iva_monto ELSE 0 END), 0) as ivaProveedores1
       FROM compras
-      WHERE date(fecha) = curdate()
     `);
 
-    const [[{ gastos_total }]] = await connection.query(`
-      SELECT COALESCE(SUM(monto), 0) as gastos_total
+    const [[gastos]] = await connection.query(`
+      SELECT COALESCE(SUM(monto), 0) as totalGastosOperativos
       FROM gastos
-      WHERE date(fecha) = curdate()
     `);
 
-    const ingresosDelDia = parseFloat(total_ventas);
-    const egresosDelDia = parseFloat(compras_total) + parseFloat(gastos_total);
-    const gananciaNeta = ingresosDelDia - egresosDelDia;
+    const ivaNetoPagar = parseFloat(ventas.ivaCobrado) - parseFloat(compras.ivaPagadoProveedores);
+    const gananciaNetaReal = (parseFloat(ventas.ingresoBruto) - parseFloat(ventas.ivaCobrado)) 
+                           - parseFloat(compras.totalComprasSinIva) 
+                           - parseFloat(gastos.totalGastosOperativos);
 
-    const [[{ total_compras_30d }]] = await connection.query(`
-      SELECT COALESCE(SUM(total), 0) as total_compras_30d
-      FROM compras
-      WHERE fecha >= DATE_SUB(curdate(), INTERVAL 30 DAY)
-    `);
+    const resumen = {
+      ingresoBruto: parseFloat(ventas.ingresoBruto),
+      ivaCobrado: parseFloat(ventas.ivaCobrado),
+      ivaCobrado13: parseFloat(ventas.ivaCobrado13),
+      ivaCobrado1: parseFloat(ventas.ivaCobrado1),
+      ivaPagadoProveedores: parseFloat(compras.ivaPagadoProveedores),
+      ivaProveedores13: parseFloat(compras.ivaProveedores13),
+      ivaProveedores1: parseFloat(compras.ivaProveedores1),
+      ivaNetoPagar,
+      totalComprasSinIva: parseFloat(compras.totalComprasSinIva),
+      totalGastosOperativos: parseFloat(gastos.totalGastosOperativos),
+      gananciaNetaReal
+    };
 
-    const [[{ total_gastos_30d }]] = await connection.query(`
-      SELECT COALESCE(SUM(monto), 0) as total_gastos_30d
-      FROM gastos
-      WHERE fecha >= DATE_SUB(curdate(), INTERVAL 30 DAY)
-    `);
-
-    const [[{ total_ventas_30d }]] = await connection.query(`
-      SELECT COALESCE(SUM(total), 0) as total_ventas_30d
-      FROM ventas
-      WHERE fecha >= DATE_SUB(curdate(), INTERVAL 30 DAY)
-    `);
-
-    // Ventas 7 dias
-    const [ventasUltimos7Dias] = await connection.query(`
-      SELECT date(fecha) as fecha, SUM(total) as monto
+    // 2. Ventas últimos días
+    const [ventasRows] = await connection.query(`
+      SELECT date(fecha) as fecha, SUM(total) as total
       FROM ventas
       WHERE fecha >= DATE_SUB(curdate(), INTERVAL 7 DAY)
       GROUP BY date(fecha)
       ORDER BY date(fecha) ASC
     `);
+    const ventasUltimosDias = ventasRows.map(r => ({
+      fecha: r.fecha,
+      etiqueta: new Date(r.fecha).toLocaleDateString('es-CR', { weekday: 'short' }),
+      total: parseFloat(r.total)
+    }));
 
-    // Top 5 productos
-    const [productosMasVendidos] = await connection.query(`
-      SELECT p.nombre, SUM(v.cantidad) as cantidad
-      FROM ventas v
-      JOIN productos p ON v.producto_id = p.id
-      WHERE v.fecha >= DATE_SUB(curdate(), INTERVAL 30 DAY)
-      GROUP BY p.id
-      ORDER BY cantidad DESC
-      LIMIT 5
+    // 3. Inventario (Alertas de stock bajo)
+    const [inventario] = await connection.query(`
+      SELECT 
+        p.id as productoId,
+        p.nombre,
+        c.nombre as categoriaNombre,
+        p.cantidad_por_presentacion as stockActual,
+        p.umbral_stock_bajo as umbralBajo,
+        p.precio_venta_actual as precio,
+        p.costo_compra_actual as costo
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      ORDER BY p.cantidad_por_presentacion ASC
+      LIMIT 10
     `);
 
     res.json({
-      ingresosDelDia,
-      egresosDelDia,
-      gananciaNeta,
-      totalCompras30d: parseFloat(total_compras_30d),
-      totalGastos30d: parseFloat(total_gastos_30d),
-      totalVentas30d: parseFloat(total_ventas_30d),
-      ventasUltimos7Dias,
-      productosMasVendidos
+      resumen,
+      ventasUltimosDias,
+      inventario
     });
 
   } catch (err) {
