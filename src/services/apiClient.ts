@@ -1,4 +1,4 @@
-const API_URL = 'https://blue-otters-accept.loca.lt/api';
+const API_URL = 'https://api.expoferiascr.site/api';
 
 type ApiRequest = Omit<RequestInit, 'headers'> & {
   headers?: Record<string, string>;
