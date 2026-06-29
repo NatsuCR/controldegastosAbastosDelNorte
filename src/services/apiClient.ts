@@ -1,4 +1,4 @@
-const API_URL = 'http://192.168.1.50:3000/api'; // Ajusta la IP según la laptop
+const API_URL = 'http://192.168.1.18:3000/api'; // Ajusta la IP según la laptop
 
 export const apiClient = {
   get: async (endpoint: string) => {
