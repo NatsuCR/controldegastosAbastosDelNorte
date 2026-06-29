@@ -4,7 +4,18 @@ import { useAuthStore } from '../store/useAuthStore';
 import { colores, espacios, radios } from '../constants/tema';
 import { AppButton } from '../components/AppButton';
 import { LogIn } from 'lucide-react-native';
-import { apiClient } from '../services/apiClient';
+import { ApiError, apiClient } from '../services/apiClient';
+
+function getLoginErrorMessage(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'Usuario o contraseña incorrectos';
+    if (error.status === 0) return 'No se pudo conectar con el servidor';
+    if (error.status >= 500) return 'El servidor no esta respondiendo bien';
+    return error.message;
+  }
+
+  return 'No se pudo iniciar sesion';
+}
 
 export function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -21,8 +32,8 @@ export function LoginScreen() {
     try {
       const data = await apiClient.post('/auth/login', { username, password });
       login(data);
-    } catch (err: any) {
-      Alert.alert('Error', 'Usuario o contraseña incorrectos');
+    } catch (err: unknown) {
+      Alert.alert('Error', getLoginErrorMessage(err));
     } finally {
       setLoading(false);
     }

@@ -1,46 +1,81 @@
-const API_URL = 'https://stewart-rom-hugh-someone.trycloudflare.com/api'; // URL de Cloudflare Tunnel
+const API_URL = 'https://pink-ladybug-5.loca.lt/api';
+
+type ApiRequest = Omit<RequestInit, 'headers'> & {
+  headers?: Record<string, string>;
+};
+
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+async function readBody(response: Response) {
+  const text = await response.text();
+  if (!text) return null;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function getErrorMessage(status: number, body: unknown) {
+  if (body && typeof body === 'object' && 'error' in body) {
+    const error = body.error;
+    if (typeof error === 'string') return error;
+  }
+
+  if (typeof body === 'string') return body;
+  return `Error HTTP ${status}`;
+}
+
+async function request(endpoint: string, options: ApiRequest = {}) {
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Bypass-Tunnel-Reminder': 'true',
+        ...options.headers,
+      },
+    });
+    const body = await readBody(response);
+
+    if (!response.ok) {
+      throw new ApiError(response.status, getErrorMessage(response.status, body));
+    }
+
+    return body;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError(0, 'No se pudo conectar con el servidor');
+  }
+}
 
 export const apiClient = {
-  get: async (endpoint: string) => {
-    const response = await fetch(`${API_URL}${endpoint}`);
-    if (!response.ok) throw new Error('Error en GET ' + endpoint);
-    return response.json();
-  },
-  
-  post: async (endpoint: string, body: any) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!response.ok) throw new Error('Error en POST ' + endpoint);
-    return response.json();
-  },
+  get: (endpoint: string) => request(endpoint),
 
-  put: async (endpoint: string, body: any) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!response.ok) throw new Error('Error en PUT ' + endpoint);
-    return response.json();
-  },
+  post: (endpoint: string, body: unknown) => request(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }),
 
-  delete: async (endpoint: string) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Error en DELETE ' + endpoint);
-    return response.json();
-  },
+  put: (endpoint: string, body: unknown) => request(endpoint, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }),
 
-  postForm: async (endpoint: string, formData: FormData) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'POST',
-      body: formData
-    });
-    if (!response.ok) throw new Error('Error en POST form ' + endpoint);
-    return response.json();
-  }
+  delete: (endpoint: string) => request(endpoint, { method: 'DELETE' }),
+
+  postForm: (endpoint: string, formData: FormData) => request(endpoint, {
+    method: 'POST',
+    body: formData,
+  }),
 };

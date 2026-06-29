@@ -117,7 +117,7 @@ INSERT IGNORE INTO configuracion (clave, valor) VALUES
 ('precioVentaIncluyeIva', 'true'),
 ('costoProveedorIncluyeIva', 'false');
 
--- Insertar Administrador por defecto (Contraseña: admin123)
--- El hash generado abajo corresponde a "admin123" usando bcrypt (salt rounds: 10)
+-- Insertar Administrador por defecto (Contraseña: 123456)
+-- El hash generado abajo corresponde a "123456" usando bcrypt (salt rounds: 10)
 INSERT IGNORE INTO usuarios (username, password, rol) VALUES 
-('admin', '$2b$10$w3jP8h.o3wRjF8o3wRjF8eJ.U1B5VqV8yD9D9D9D9D9D9D9D9D9D9', 'admin');
+('admin', '$2b$10$NZ79FKDq/142yKjj0.WPOeJjKDA4NQOWKVBO.ba0Bsu9znuwBonOa', 'admin');

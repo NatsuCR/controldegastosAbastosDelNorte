@@ -4,6 +4,24 @@ const db = require('../db');
 
 const router = express.Router();
 
+function isBcryptHash(value) {
+  return /^\$2[aby]\$/.test(String(value || ''));
+}
+
+async function passwordMatches(user, password) {
+  const storedPassword = String(user.password || '');
+
+  if (isBcryptHash(storedPassword)) {
+    return bcrypt.compare(password, storedPassword);
+  }
+
+  if (password !== storedPassword) return false;
+
+  const hash = await bcrypt.hash(password, 10);
+  await db.query('UPDATE usuarios SET password = ? WHERE id = ?', [hash, user.id]);
+  return true;
+}
+
 // Login
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -14,7 +32,7 @@ router.post('/login', async (req, res) => {
     if (rows.length === 0) return res.status(401).json({ error: 'Usuario no encontrado' });
 
     const user = rows[0];
-    const match = await bcrypt.compare(password, user.password);
+    const match = await passwordMatches(user, password);
     
     if (!match) return res.status(401).json({ error: 'Contraseña incorrecta' });
 
