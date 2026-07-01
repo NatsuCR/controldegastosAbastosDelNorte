@@ -2,6 +2,7 @@ import type { DashboardData, PeriodoDashboard } from '../../types/dashboard';
 import { apiClient } from '../../services/apiClient';
 import { diasUltimaSemana } from '../../utils/periodos';
 import { crearErrorRepositorio } from './errores';
+import { normalizarInventario } from './normalizadores';
 
 export async function obtenerDashboard(periodo: PeriodoDashboard): Promise<DashboardData> {
   try {
@@ -12,7 +13,7 @@ export async function obtenerDashboard(periodo: PeriodoDashboard): Promise<Dashb
 
     return {
       ...data,
-      inventario: Array.isArray(data.inventario) ? data.inventario : [],
+      inventario: Array.isArray(data.inventario) ? data.inventario.map(normalizarInventario) : [],
       ventasUltimosDias: diasUltimaSemana().map((dia) => ({
         ...dia,
         total: ventasPorFecha.get(dia.fecha) ?? 0,

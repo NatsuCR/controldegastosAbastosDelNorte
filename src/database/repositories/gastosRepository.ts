@@ -1,26 +1,17 @@
 import { apiClient } from '../../services/apiClient';
+import { subirArchivoMultipart } from '../../services/fileUpload';
 import { crearErrorRepositorio } from './errores';
 import type { RegistrarGastoInput } from '../../types/gastos';
 
 export async function registrarGasto(input: RegistrarGastoInput): Promise<number> {
   try {
-    const formData = new FormData();
-    formData.append('fecha', input.fecha);
-    formData.append('categoria', input.categoria);
-    formData.append('descripcion', input.descripcion);
-    formData.append('monto', String(input.monto));
-    if (input.nota) formData.append('nota', input.nota);
-    
     if (input.imagenFactura) {
-      const fileName = input.imagenFactura.split('/').pop() || 'factura.jpg';
-      formData.append('imagenFactura', {
-        uri: input.imagenFactura,
-        name: fileName,
-        type: 'image/jpeg',
-      } as any);
+      const { imagenFactura, ...campos } = input;
+      const result = await subirArchivoMultipart('/gastos', imagenFactura, campos);
+      return result.id;
     }
 
-    const result = await apiClient.postForm('/gastos', formData);
+    const result = await apiClient.post('/gastos', input);
     return result.id;
   } catch (error) {
     throw crearErrorRepositorio('No se pudo registrar el gasto', error);

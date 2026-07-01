@@ -2,6 +2,7 @@ import { apiClient } from '../../services/apiClient';
 import { crearErrorRepositorio } from './errores';
 import type { RegistrarCompraInput } from '../../types/negocio';
 import { calcularCompra } from '../../services';
+import { subirArchivoMultipart } from '../../services/fileUpload';
 import { obtenerConfiguracionNegocio } from './configuracionRepository';
 
 export async function registrarCompra(input: RegistrarCompraInput): Promise<number> {
@@ -16,28 +17,21 @@ export async function registrarCompra(input: RegistrarCompraInput): Promise<numb
     // Calculate totals based on the input
     const calculo = calcularCompra(input.costoUnitario, input.cantidad, tasaIva, config.costoProveedorIncluyeIva);
 
-    const formData = new FormData();
-    formData.append('proveedorId', String(input.proveedorId));
-    formData.append('productoId', String(input.productoId));
-    formData.append('cantidad', String(input.cantidad));
-    formData.append('costoUnitario', String(input.costoUnitario));
-    formData.append('tasaIva', String(tasaIva));
-    formData.append('subtotal', String(calculo.subtotal));
-    formData.append('ivaMonto', String(calculo.ivaMonto));
-    formData.append('total', String(calculo.total));
-    formData.append('metodoPago', input.metodoPago);
-    if (input.nota) formData.append('nota', input.nota);
-    
+    const payload = {
+      ...input,
+      tasaIva,
+      subtotal: calculo.subtotal,
+      ivaMonto: calculo.ivaMonto,
+      total: calculo.total,
+    };
+
     if (input.imagenFactura) {
-      const fileName = input.imagenFactura.split('/').pop() || 'factura.jpg';
-      formData.append('imagenFactura', {
-        uri: input.imagenFactura,
-        name: fileName,
-        type: 'image/jpeg',
-      } as any);
+      const campos = { ...payload, imagenFactura: undefined };
+      const result = await subirArchivoMultipart('/compras', input.imagenFactura, campos);
+      return result.id;
     }
 
-    const result = await apiClient.postForm('/compras', formData);
+    const result = await apiClient.post('/compras', payload);
     return result.id;
   } catch (error) {
     throw crearErrorRepositorio('No se pudo registrar la compra', error);

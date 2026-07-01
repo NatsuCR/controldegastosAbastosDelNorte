@@ -51,15 +51,27 @@ router.get('/', async (req, res) => {
       GROUP BY DATE(fecha)
       ORDER BY DATE(fecha) ASC
     `);
-    const [inventario] = await connection.query(`
-      SELECT p.id productoId, p.nombre, c.nombre categoriaNombre,
-        p.cantidad_por_presentacion stockActual, p.umbral_stock_bajo umbralBajo,
-        p.precio_venta_actual precio, p.costo_compra_actual costo
+    const [inventarioRows] = await connection.query(`
+      SELECT p.id productoId, p.nombre, p.sku, p.marca, c.nombre categoriaNombre,
+        p.unidad_medida unidadMedida, p.umbral_stock_bajo umbralStockBajo,
+        p.precio_venta_actual precioVentaActual, p.costo_compra_actual costoCompraActual,
+        p.tasa_iva tasaIva,
+        (SELECT COALESCE(SUM(CASE WHEN tipo_movimiento = 'entrada' THEN cantidad ELSE -cantidad END), 0)
+         FROM inventario WHERE producto_id = p.id) stock
       FROM productos p
       LEFT JOIN categorias c ON p.categoria_id = c.id
-      ORDER BY p.cantidad_por_presentacion ASC
+      WHERE p.activo = TRUE
+      ORDER BY stock ASC
       LIMIT 10
     `);
+    const inventario = inventarioRows.map((item) => ({
+      ...item,
+      stock: num(item.stock),
+      umbralStockBajo: num(item.umbralStockBajo),
+      precioVentaActual: num(item.precioVentaActual),
+      costoCompraActual: num(item.costoCompraActual),
+      tasaIva: num(item.tasaIva),
+    }));
 
     const ivaNetoPagar = num(ventas.ivaCobrado) - num(compras.ivaPagadoProveedores);
     const gananciaNetaReal = num(ventas.ingresoBruto) - num(ventas.ivaCobrado)

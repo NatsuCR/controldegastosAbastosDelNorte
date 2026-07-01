@@ -1,11 +1,12 @@
 import { apiClient } from '../../services/apiClient';
 import { crearErrorRepositorio } from './errores';
+import { normalizarInventario } from './normalizadores';
 
 export async function obtenerStockProducto(productoId: number): Promise<number> {
   try {
     const productos = await apiClient.get('/inventario');
-    const p = productos.find((prod: any) => prod.id === productoId);
-    return p ? p.cantidadStock : 0;
+    const p = productos.map(normalizarInventario).find((prod: any) => prod.productoId === productoId);
+    return p ? p.stock : 0;
   } catch (error) {
     throw crearErrorRepositorio('No se pudo calcular el stock', error);
   }
@@ -13,7 +14,8 @@ export async function obtenerStockProducto(productoId: number): Promise<number> 
 
 export async function listarInventarioActual(): Promise<any[]> {
   try {
-    return await apiClient.get('/inventario');
+    const data = await apiClient.get('/inventario');
+    return Array.isArray(data) ? data.map(normalizarInventario) : [];
   } catch (error) {
     throw crearErrorRepositorio('No se pudo cargar el inventario', error);
   }

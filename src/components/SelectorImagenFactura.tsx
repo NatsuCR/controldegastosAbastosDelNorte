@@ -54,7 +54,8 @@ export function SelectorImagenFactura({ value, onChange }: Props) {
       if (!dirInfo.exists) {
         await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'imagenesFacturas/', { intermediates: true });
       }
-      const nombreArchivo = uriOriginal.split('/').pop() || `factura_${Date.now()}.jpg`;
+      const extension = uriOriginal.match(/\.(png|jpe?g|webp)(?:\?|$)/i)?.[1] ?? 'jpg';
+      const nombreArchivo = `factura_${Date.now()}.${extension}`;
       const nuevaRuta = FileSystem.documentDirectory + 'imagenesFacturas/' + nombreArchivo;
       
       await FileSystem.copyAsync({

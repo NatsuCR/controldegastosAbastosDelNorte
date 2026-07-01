@@ -8,5 +8,6 @@ export function formatearColones(monto: number): string {
 }
 
 export function formatearNumero(valor: number): string {
+  if (!Number.isFinite(valor)) return '0';
   return Number.isInteger(valor) ? String(valor) : valor.toFixed(2);
 }
