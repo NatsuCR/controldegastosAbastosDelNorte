@@ -2,6 +2,7 @@ import { X } from 'lucide-react-native';
 import { Modal, StyleSheet, View, Image, TouchableOpacity } from 'react-native';
 
 import { colores, espacios } from '../constants/tema';
+import { apiAssetUrl } from '../services/apiClient';
 
 interface Props {
   visible: boolean;
@@ -11,6 +12,7 @@ interface Props {
 
 export function VisorImagenModal({ visible, imagenUri, onClose }: Props) {
   if (!visible || !imagenUri) return null;
+  const uri = apiAssetUrl(imagenUri) ?? imagenUri;
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -19,8 +21,8 @@ export function VisorImagenModal({ visible, imagenUri, onClose }: Props) {
           <X color="#FFFFFF" size={32} />
         </TouchableOpacity>
         
-        <Image 
-          source={{ uri: imagenUri }} 
+        <Image
+          source={{ uri }}
           style={styles.imagen} 
           resizeMode="contain"
         />

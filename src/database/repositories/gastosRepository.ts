@@ -5,6 +5,7 @@ import type { RegistrarGastoInput } from '../../types/gastos';
 export async function registrarGasto(input: RegistrarGastoInput): Promise<number> {
   try {
     const formData = new FormData();
+    formData.append('fecha', input.fecha);
     formData.append('categoria', input.categoria);
     formData.append('descripcion', input.descripcion);
     formData.append('monto', String(input.monto));

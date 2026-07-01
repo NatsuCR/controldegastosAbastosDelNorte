@@ -3,8 +3,6 @@ import { useCallback } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
 
-import { resetearBaseDatos } from '../database/db';
-
 import { AppButton } from '../components/AppButton';
 import { CatalogosConfigPanel } from '../components/CatalogosConfigPanel';
 import { ConfigFiscalPanel } from '../components/ConfigFiscalPanel';
@@ -13,6 +11,7 @@ import { ProductoConfigItem } from '../components/ProductoConfigItem';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SeccionExpandible } from '../components/SeccionExpandible';
 import { espacios } from '../constants/tema';
+import { resetearBaseDatosServidor } from '../database/repositories/resetRepository';
 import { useConfiguracionStore } from '../store/useConfiguracionStore';
 import { useNegocioStore } from '../store/useNegocioStore';
 
@@ -52,7 +51,7 @@ export function ConfiguracionScreen() {
               { text: 'Cancelar', style: 'cancel' },
               { text: 'Sí, borrar todo', style: 'destructive', onPress: async () => {
                   try {
-                    await resetearBaseDatos();
+                    await resetearBaseDatosServidor();
                     await Promise.all([store.cargar(), negocioStore.cargarDatos()]);
                     Alert.alert('Borrado completo', 'La base de datos se ha reiniciado correctamente.');
                   } catch (e) {

@@ -1,4 +1,5 @@
-const API_URL = 'https://api.expoferiascr.site/api';
+export const API_BASE_URL = 'https://api.expoferiascr.site';
+const API_URL = `${API_BASE_URL}/api`;
 
 type ApiRequest = Omit<RequestInit, 'headers'> & {
   headers?: Record<string, string>;
@@ -33,6 +34,12 @@ function getErrorMessage(status: number, body: unknown) {
 
   if (typeof body === 'string') return body;
   return `Error HTTP ${status}`;
+}
+
+export function apiAssetUrl(path?: string | null) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
 async function request(endpoint: string, options: ApiRequest = {}) {

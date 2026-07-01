@@ -2,6 +2,10 @@ const express = require('express');
 const db = require('../db');
 
 const router = express.Router();
+const cleanSku = (value) => {
+  const sku = String(value || '').trim();
+  return sku ? sku : null;
+};
 
 router.get('/', async (req, res) => {
   try {
@@ -44,7 +48,7 @@ router.post('/', async (req, res) => {
         precio_venta_actual, costo_compra_actual, tasa_iva, umbral_stock_bajo, activo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
       [
-        categoriaId, nombre.trim(), sku || null, marca || null, unidadMedida,
+        categoriaId, String(nombre || '').trim(), cleanSku(sku), marca || null, unidadMedida,
         cantidadPorPresentacion, precioVentaActual, costoCompraActual, tasaIva, umbralStockBajo
       ]
     );
@@ -55,21 +59,26 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const {
-    nombre, sku, marca, precioVentaActual, costoCompraActual, tasaIva, umbralStockBajo, activo
-  } = req.body;
-  
+  const campos = [];
+  const valores = [];
+
+  function setCampo(nombreCampo, valor) {
+    campos.push(`${nombreCampo} = ?`);
+    valores.push(valor);
+  }
+
   try {
-    await db.query(
-      `UPDATE productos SET 
-        nombre = ?, sku = ?, marca = ?, precio_venta_actual = ?, 
-        costo_compra_actual = ?, tasa_iva = ?, umbral_stock_bajo = ?, activo = ?
-      WHERE id = ?`,
-      [
-        nombre.trim(), sku || null, marca || null, precioVentaActual, 
-        costoCompraActual, tasaIva, umbralStockBajo, activo ? 1 : 0, req.params.id
-      ]
-    );
+    if ('nombre' in req.body) setCampo('nombre', String(req.body.nombre || '').trim());
+    if ('sku' in req.body) setCampo('sku', cleanSku(req.body.sku));
+    if ('marca' in req.body) setCampo('marca', req.body.marca || null);
+    if ('precioVentaActual' in req.body) setCampo('precio_venta_actual', req.body.precioVentaActual);
+    if ('costoCompraActual' in req.body) setCampo('costo_compra_actual', req.body.costoCompraActual);
+    if ('tasaIva' in req.body) setCampo('tasa_iva', req.body.tasaIva);
+    if ('umbralStockBajo' in req.body) setCampo('umbral_stock_bajo', req.body.umbralStockBajo);
+    if ('activo' in req.body) setCampo('activo', req.body.activo ? 1 : 0);
+    if (campos.length === 0) return res.status(400).json({ error: 'No hay cambios para guardar' });
+
+    await db.query(`UPDATE productos SET ${campos.join(', ')} WHERE id = ?`, [...valores, req.params.id]);
     res.json({ message: 'Producto actualizado' });
   } catch (err) {
     res.status(400).json({ error: 'Error al actualizar producto', details: err.message });

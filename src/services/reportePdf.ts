@@ -2,6 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 
 import type { ReportePeriodo } from '../types/reportes';
+import { apiAssetUrl } from './apiClient';
 import { formatearColones, formatearNumero } from '../utils/formato';
 
 export async function exportarReportePdf(reporte: ReportePeriodo): Promise<void> {
@@ -23,6 +24,18 @@ function crearHtmlReporte(reporte: ReportePeriodo): string {
       <td>${formatearColones(producto.montoVendido)}</td>
     </tr>
   `).join('');
+  const compras = reporte.historialCompras.map((compra) => filaHistorial(
+    compra.fecha,
+    `${compra.productoNombre} / ${compra.proveedorNombre}`,
+    compra.total,
+    compra.imagenFactura,
+  )).join('');
+  const gastos = reporte.historialGastos.map((gasto) => filaHistorial(
+    gasto.fecha,
+    `${gasto.descripcion} (${gasto.categoria})`,
+    gasto.monto,
+    gasto.imagenFactura,
+  )).join('');
 
   return `
     <html>
@@ -38,8 +51,23 @@ function crearHtmlReporte(reporte: ReportePeriodo): string {
           <thead><tr><th>Producto</th><th>SKU</th><th>Categoria</th><th>Proveedor</th><th>Cantidad</th><th>Monto</th></tr></thead>
           <tbody>${filas || '<tr><td colspan="6">Sin ventas en el periodo</td></tr>'}</tbody>
         </table>
+        <h2>Facturas de compras</h2>
+        ${compras || '<p>Sin compras en el periodo</p>'}
+        <h2>Facturas de gastos adicionales</h2>
+        ${gastos || '<p>Sin gastos en el periodo</p>'}
       </body>
     </html>
+  `;
+}
+
+function filaHistorial(fecha: string, detalle: string, monto: number, imagen?: string | null): string {
+  const url = apiAssetUrl(imagen);
+  return `
+    <div class="historial">
+      <div><strong>${detalle}</strong></div>
+      <div>${new Date(fecha).toLocaleDateString('es-CR')} - ${formatearColones(monto)}</div>
+      ${url ? `<img src="${url}" />` : '<em>Sin foto de factura</em>'}
+    </div>
   `;
 }
 
@@ -74,5 +102,7 @@ function estilos(): string {
     table { border-collapse: collapse; margin-top: 12px; width: 100%; }
     th, td { border-bottom: 1px solid #D7DEE2; padding: 8px; text-align: left; }
     th { background: #EEF6F4; }
+    .historial { border: 1px solid #D7DEE2; border-radius: 8px; margin: 10px 0; padding: 12px; page-break-inside: avoid; }
+    .historial img { display: block; margin-top: 10px; max-height: 420px; max-width: 100%; object-fit: contain; }
   </style>`;
 }
