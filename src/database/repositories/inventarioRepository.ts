@@ -23,9 +23,8 @@ export async function listarInventarioActual(): Promise<any[]> {
 
 export async function registrarAjusteInventario(productoId: number, cantidad: number, nota: string): Promise<number> {
   try {
-    // We would need an endpoint for this, for now just returning 1
-    // await apiClient.post('/inventario/ajuste', { productoId, cantidad, nota });
-    return 1;
+    const result = await apiClient.post('/inventario/ajuste', { productoId, cantidad, nota });
+    return result.id;
   } catch (error) {
     throw crearErrorRepositorio('No se pudo registrar ajuste', error);
   }

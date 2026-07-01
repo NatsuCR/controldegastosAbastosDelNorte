@@ -38,23 +38,38 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const {
     categoriaId, nombre, sku, marca, unidadMedida, cantidadPorPresentacion,
-    precioVentaActual, costoCompraActual, tasaIva, umbralStockBajo
+    precioVentaActual, costoCompraActual, stockInicial, tasaIva, umbralStockBajo
   } = req.body;
-  
+  const connection = await db.getConnection();
+
   try {
-    const [result] = await db.query(
+    await connection.beginTransaction();
+    const [result] = await connection.query(
       `INSERT INTO productos (
         categoria_id, nombre, sku, marca, unidad_medida, cantidad_por_presentacion,
         precio_venta_actual, costo_compra_actual, tasa_iva, umbral_stock_bajo, activo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
       [
         categoriaId, String(nombre || '').trim(), cleanSku(sku), marca || null, unidadMedida,
-        cantidadPorPresentacion, precioVentaActual, costoCompraActual, tasaIva, umbralStockBajo
+        cantidadPorPresentacion, precioVentaActual, costoCompraActual || 0, tasaIva, umbralStockBajo
       ]
     );
+    const cantidadStock = Number(stockInicial || 0);
+    if (cantidadStock > 0) {
+      const fecha = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      await connection.query(
+        `INSERT INTO inventario (fecha, tipo_movimiento, producto_id, cantidad, compra_id, venta_id, nota)
+         VALUES (?, 'entrada', ?, ?, NULL, NULL, ?)`,
+        [fecha, result.insertId, cantidadStock, 'Produccion interna / stock inicial']
+      );
+    }
+    await connection.commit();
     res.json({ id: result.insertId });
   } catch (err) {
+    await connection.rollback();
     res.status(400).json({ error: 'Error al crear producto', details: err.message });
+  } finally {
+    connection.release();
   }
 });
 

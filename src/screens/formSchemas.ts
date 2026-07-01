@@ -39,7 +39,8 @@ export const productoSchema = z.object({
   unidadMedida: z.string().trim().min(1, 'La unidad es obligatoria'),
   cantidadPorPresentacion: z.number().positive('La presentacion debe ser mayor a cero'),
   precioVentaActual: montoEntero.positive('El precio debe ser mayor a cero'),
-  costoCompraActual: montoEntero.positive('El costo debe ser mayor a cero'),
+  costoCompraActual: montoEntero.min(0, 'El costo no puede ser negativo'),
+  stockInicial: z.number().min(0, 'La cantidad no puede ser negativa'),
   tasaIvaPorcentaje: z.number().min(0, 'El IVA no puede ser negativo').max(13, 'El IVA maximo es 13'),
   umbralStockBajo: z.number().min(0, 'El umbral no puede ser negativo'),
 });

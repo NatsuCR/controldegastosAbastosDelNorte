@@ -38,4 +38,26 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/ajuste', async (req, res) => {
+  const productoId = Number(req.body.productoId);
+  const cantidad = Number(req.body.cantidad);
+  const nota = req.body.nota || 'Ajuste manual de inventario';
+
+  if (!productoId || !Number.isFinite(cantidad) || cantidad <= 0) {
+    return res.status(400).json({ error: 'Producto y cantidad son obligatorios' });
+  }
+
+  try {
+    const fecha = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    const [result] = await db.query(
+      `INSERT INTO inventario (fecha, tipo_movimiento, producto_id, cantidad, compra_id, venta_id, nota)
+       VALUES (?, 'entrada', ?, ?, NULL, NULL, ?)`,
+      [fecha, productoId, cantidad, nota]
+    );
+    res.json({ id: result.insertId });
+  } catch (err) {
+    res.status(500).json({ error: 'No se pudo ajustar el inventario', details: err.message });
+  }
+});
+
 module.exports = router;

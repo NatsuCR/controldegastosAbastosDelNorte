@@ -28,7 +28,7 @@ export function EditarProductoModal({ visible, producto, onClose }: Props) {
       categoriaId: 1, // default falso, se sobreescribe abajo
       nombre: '', sku: '', marca: '', unidadMedida: 'unidad',
       cantidadPorPresentacion: 1, precioVentaActual: 0, costoCompraActual: 0,
-      tasaIvaPorcentaje: 0, umbralStockBajo: 1,
+      stockInicial: 0, tasaIvaPorcentaje: 0, umbralStockBajo: 1,
     },
   });
 
@@ -44,6 +44,7 @@ export function EditarProductoModal({ visible, producto, onClose }: Props) {
         cantidadPorPresentacion: 1, // Dummy
         precioVentaActual: producto.precioVentaActual,
         costoCompraActual: producto.costoCompraActual,
+        stockInicial: 0,
         tasaIvaPorcentaje: producto.tasaIva * 100,
         umbralStockBajo: producto.umbralStockBajo,
       });
@@ -128,7 +129,7 @@ export function EditarProductoModal({ visible, producto, onClose }: Props) {
               </View>
               <View style={styles.mitad}>
                 <Controller control={form.control} name="costoCompraActual" render={({ field, fieldState }) => (
-                  <CampoNumero error={fieldState.error?.message} label="Costo de compra"
+                  <CampoNumero error={fieldState.error?.message} label="Costo base opcional"
                     onChange={field.onChange} value={field.value} />
                 )} />
               </View>

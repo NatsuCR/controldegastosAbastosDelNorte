@@ -12,10 +12,12 @@ import { AppButton } from './AppButton';
 import { CampoNumero } from './CampoNumero';
 import { CampoTexto } from './CampoTexto';
 import { CategoriaSelector } from './CategoriaSelector';
+import { ProductoMontosCampos } from './ProductoMontosCampos';
 
 interface Props {
   categorias: Categoria[];
   loading: boolean;
+  modo?: 'proveedor' | 'produccion';
   proveedorNombre?: string;
   onCrearCategoria: (nombre: string) => Promise<number | null>;
   onCrearProducto: (input: CrearProductoInput) => Promise<number | null>;
@@ -23,12 +25,13 @@ interface Props {
 
 export function NuevoProductoPanel(props: Props) {
   const [nuevaCategoria, setNuevaCategoria] = useState('');
+  const esProduccion = props.modo === 'produccion';
   const form = useForm<ProductoForm>({
     resolver: zodResolver(productoSchema),
     defaultValues: {
-      categoriaId: 0, nombre: '', marca: '', unidadMedida: 'kg',
+      categoriaId: 0, nombre: '', marca: '', unidadMedida: esProduccion ? 'unidad' : 'kg',
       cantidadPorPresentacion: 1, precioVentaActual: 0, costoCompraActual: 0,
-      tasaIvaPorcentaje: 0, umbralStockBajo: 1,
+      stockInicial: 0, tasaIvaPorcentaje: 0, umbralStockBajo: 1,
     },
   });
   const categoriaId = form.watch('categoriaId');
@@ -56,6 +59,7 @@ export function NuevoProductoPanel(props: Props) {
       marca: props.proveedorNombre,
       unidadMedida: data.unidadMedida,
       cantidadPorPresentacion: 1,
+      stockInicial: esProduccion ? data.stockInicial : 0,
       tasaIva: data.tasaIvaPorcentaje / 100,
     });
     if (id) {
@@ -65,9 +69,10 @@ export function NuevoProductoPanel(props: Props) {
 
   return (
     <View style={styles.caja}>
-      <Text style={styles.titulo}>Producto nuevo del proveedor</Text>
+      <Text style={styles.titulo}>{esProduccion ? 'Producto de produccion interna' : 'Producto nuevo del proveedor'}</Text>
       <Text style={styles.ayuda}>
-        Proveedor: {props.proveedorNombre ?? 'sin proveedor seleccionado'}
+        {esProduccion ? 'Registra lo que hiciste y suma la cantidad al stock.'
+          : `Proveedor: ${props.proveedorNombre ?? 'sin proveedor seleccionado'}`}
       </Text>
       <CategoriaSelector categorias={props.categorias} value={categoriaId}
         onChange={(id) => form.setValue('categoriaId', id, { shouldValidate: true })} />
@@ -77,7 +82,6 @@ export function NuevoProductoPanel(props: Props) {
         <CampoTexto error={fieldState.error?.message} label="Producto"
           onChangeText={field.onChange} value={field.value} />
       )} />
-
       <Controller control={form.control} name="unidadMedida" render={({ field }) => (
         <View style={styles.selectorUnidad}>
           <Text style={styles.labelUnidad}>¿Cómo se vende/compra?</Text>
@@ -87,7 +91,13 @@ export function NuevoProductoPanel(props: Props) {
           </View>
         </View>
       )} />
-      <CamposMontos control={form.control} />
+      {esProduccion ? (
+        <Controller control={form.control} name="stockInicial" render={({ field, fieldState }) => (
+          <CampoNumero error={fieldState.error?.message} label="Cantidad producida para stock"
+            onChange={field.onChange} value={field.value} />
+        )} />
+      ) : null}
+      <ProductoMontosCampos control={form.control} esProduccion={esProduccion} />
       <Controller control={form.control} name="tasaIvaPorcentaje" render={({ field, fieldState }) => (
         <CampoNumero error={fieldState.error?.message} label="IVA %"
           onChange={field.onChange} value={field.value} />
@@ -98,24 +108,9 @@ export function NuevoProductoPanel(props: Props) {
   );
 }
 
-function CamposMontos({ control }: Pick<ReturnType<typeof useForm<ProductoForm>>, 'control'>) {
-  return <>
-    <Controller control={control} name="precioVentaActual" render={({ field, fieldState }) => (
-      <CampoNumero error={fieldState.error?.message} label="Precio de venta"
-        onChange={field.onChange} value={field.value} />
-    )} />
-    <Controller control={control} name="costoCompraActual" render={({ field, fieldState }) => (
-      <CampoNumero error={fieldState.error?.message} label="Costo de compra"
-        onChange={field.onChange} value={field.value} />
-    )} />
-  </>;
-}
-
 const styles = StyleSheet.create({
-  caja: {
-    backgroundColor: colores.superficie, borderColor: colores.borde,
-    borderRadius: radios.md, borderWidth: 1, gap: espacios.sm, padding: espacios.md
-  },
+  caja: { backgroundColor: colores.superficie, borderColor: colores.borde,
+    borderRadius: radios.md, borderWidth: 1, gap: espacios.sm, padding: espacios.md },
   titulo: { color: colores.texto, fontSize: 17, fontWeight: '900' },
   ayuda: { color: colores.textoSecundario, fontSize: 13, lineHeight: 18 },
   selectorUnidad: { gap: espacios.xs },

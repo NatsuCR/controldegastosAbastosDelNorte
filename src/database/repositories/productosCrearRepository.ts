@@ -4,13 +4,14 @@ import type { CrearProductoInput } from '../../types/negocio';
 
 export async function guardarProducto(producto: CrearProductoInput): Promise<number> {
   try {
-    const { nombre, unidadMedida, cantidadPorPresentacion, precioVentaActual, costoCompraActual } = producto;
+    const { nombre, unidadMedida, cantidadPorPresentacion, precioVentaActual, costoCompraActual, stockInicial } = producto;
     
     if (!nombre?.trim()) throw new Error('El nombre es obligatorio');
     if (!unidadMedida) throw new Error('La unidad de medida es obligatoria');
     if (cantidadPorPresentacion <= 0) throw new Error('La cantidad debe ser mayor a cero');
     if (precioVentaActual < 0) throw new Error('El precio no puede ser negativo');
     if (costoCompraActual < 0) throw new Error('El costo no puede ser negativo');
+    if ((stockInicial ?? 0) < 0) throw new Error('El stock inicial no puede ser negativo');
 
     const result = await apiClient.post('/productos', producto);
     return result.id;

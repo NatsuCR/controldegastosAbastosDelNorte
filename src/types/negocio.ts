@@ -68,6 +68,7 @@ export interface CrearProductoInput {
   cantidadPorPresentacion: number;
   precioVentaActual: number;
   costoCompraActual: number;
+  stockInicial?: number;
   tasaIva: number;
   umbralStockBajo: number;
 }

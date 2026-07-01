@@ -59,7 +59,7 @@ export function ProductoConfigItem({ producto, loading, onSave }: Props) {
           {producto.marca ? <Text style={styles.detalle}>Proveedor: {producto.marca}</Text> : null}
           <Text style={styles.margen}>Margen nuevo: {formatearColones(venta - costo)}</Text>
           <CampoNumero label="Precio venta" value={venta} onChange={setVenta} />
-          <CampoNumero label="Costo compra" value={costo} onChange={setCosto} />
+          <CampoNumero label="Costo base opcional" value={costo} onChange={setCosto} />
           <CampoNumero label="IVA %" value={iva} onChange={setIva} />
           <CampoNumero label="Stock bajo desde" value={umbral} onChange={setUmbral} />
           <AppButton label="Guardar producto" loading={loading} onPress={() => onSave({

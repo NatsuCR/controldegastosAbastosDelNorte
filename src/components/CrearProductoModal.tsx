@@ -37,6 +37,7 @@ export function CrearProductoModal({ visible, onClose }: Props) {
             <NuevoProductoPanel
               categorias={store.categorias}
               loading={store.cargando}
+              modo="produccion"
               onCrearCategoria={store.crearCategoria}
               onCrearProducto={crearProducto}
               proveedorNombre="Producción Interna"
